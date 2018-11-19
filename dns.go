@@ -17,6 +17,7 @@ type DNSServer interface {
 // DNSService is the implementation of DNSServer interface
 type DNSService struct {
 	packets chan Packet
+	conn    *net.UDPConn
 }
 
 // Packet carries DNS packet payload and sender address
@@ -31,6 +32,7 @@ func (s *DNSService) Listen() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	s.conn = c
 	defer c.Close()
 	for {
 		b := make([]byte, 512)
@@ -48,6 +50,7 @@ func (s *DNSService) Query(p Packet) {
 	var m dnsmessage.Message
 	err := m.Unpack(p.message)
 	if err != nil {
+		log.Println(err)
 		return
 	}
 
@@ -93,20 +96,13 @@ func (s *DNSService) Query(p Packet) {
 // Send sends DNS message back with answer
 func (s *DNSService) Send() {
 	for p := range s.packets {
-		go sendPacket(p)
+		go sendPacket(s.conn, p)
 	}
 }
 
-func sendPacket(p Packet) {
-	c, err := net.DialUDP("udp", nil, p.addr)
+func sendPacket(conn *net.UDPConn, p Packet) {
+	_, err := conn.WriteToUDP(p.message, p.addr)
 	if err != nil {
 		log.Println(err)
-		return
-	}
-	defer c.Close()
-	_, err = c.WriteToUDP(p.message, p.addr)
-	if err != nil {
-		log.Println(err)
-		return
 	}
 }
