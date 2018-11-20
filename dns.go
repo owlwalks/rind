@@ -9,24 +9,26 @@ import (
 	"golang.org/x/net/dns/dnsmessage"
 )
 
-// DNSServer will do Listen, Query and Send
+// DNSServer will do Listen, Query and Send.
 type DNSServer interface {
 	Listen()
 	Query(Packet)
 	Send()
 }
 
-// DNSService is the implementation of DNSServer interface
+type kv struct {
+	sync.RWMutex
+	data map[string][]dnsmessage.Resource
+}
+
+// DNSService is the implementation of DNSServer interface.
 type DNSService struct {
 	packets chan Packet
 	conn    *net.UDPConn
-	book    struct {
-		sync.RWMutex
-		resources map[string][]dnsmessage.Resource
-	}
+	book    kv
 }
 
-// Packet carries DNS packet payload and sender address
+// Packet carries DNS packet payload and sender address.
 type Packet struct {
 	addr    *net.UDPAddr
 	message []byte
@@ -50,7 +52,7 @@ func (s *DNSService) Listen() {
 	}
 }
 
-// Query lookup answers for DNS message
+// Query lookup answers for DNS message.
 func (s *DNSService) Query(p Packet) {
 	// unpack
 	var m dnsmessage.Message
@@ -81,7 +83,7 @@ func (s *DNSService) Query(p Packet) {
 
 	// answer the question
 	s.book.RLock()
-	if val, ok := s.book.resources[sb.String()]; ok {
+	if val, ok := s.book.data[sb.String()]; ok {
 		m.Answers = append(m.Answers, val...)
 	}
 	s.book.RUnlock()
@@ -95,7 +97,7 @@ func (s *DNSService) Query(p Packet) {
 	s.packets <- p
 }
 
-// Send sends DNS message back with answer
+// Send sends DNS message back with answer.
 func (s *DNSService) Send() {
 	for p := range s.packets {
 		go sendPacket(s.conn, p)
@@ -107,4 +109,19 @@ func sendPacket(conn *net.UDPConn, p Packet) {
 	if err != nil {
 		log.Println(err)
 	}
+}
+
+// New setups a DNSService with custom number of buffered packets.
+// Set nPackets high enough for better throughput.
+func New(nPackets int) DNSService {
+	packets := make(chan Packet, nPackets)
+	return DNSService{packets, nil, kv{data: make(map[string][]dnsmessage.Resource)}}
+}
+
+// Start convenient init every parts of DNS service.
+// See New for nPackets.
+func Start(nPackets int) {
+	s := New(nPackets)
+	go s.Listen()
+	go s.Send()
 }
