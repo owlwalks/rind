@@ -1,10 +1,7 @@
 package rind
 
 import (
-	"bufio"
-	"bytes"
 	"encoding/gob"
-	"fmt"
 	"log"
 	"os"
 	"sync"
@@ -16,11 +13,6 @@ type kv struct {
 	sync.RWMutex
 	data     map[string][]dnsmessage.Resource
 	filePath string
-}
-
-type row struct {
-	k string
-	v []dnsmessage.Resource
 }
 
 func (b *kv) get(key string) ([]dnsmessage.Resource, bool) {
@@ -46,15 +38,10 @@ func (b *kv) save() {
 		log.Fatal(err)
 	}
 	defer fWriter.Close()
-	var buf bytes.Buffer
-	enc := gob.NewEncoder(&buf)
-	for k, v := range b.data {
-		err := enc.Encode(row{k, v})
-		if err != nil {
-			log.Println(err)
-			continue
-		}
-		fmt.Fprintln(fWriter, buf)
+
+	enc := gob.NewEncoder(fWriter)
+	if err = enc.Encode(b.data); err != nil {
+		log.Fatal(err)
 	}
 }
 
@@ -64,21 +51,9 @@ func (b *kv) load() {
 		log.Fatal(err)
 	}
 	defer fReader.Close()
-	scanner := bufio.NewScanner(fReader)
-	var buf bytes.Buffer
-	dec := gob.NewDecoder(&buf)
-	for scanner.Scan() {
-		_, err = buf.Write(scanner.Bytes())
-		if err != nil {
-			log.Println(err)
-			continue
-		}
-		var r row
-		err = dec.Decode(&r)
-		if err != nil {
-			log.Println(err)
-			continue
-		}
-		b.set(r.k, r.v)
+
+	dec := gob.NewDecoder(fReader)
+	if err = dec.Decode(&b.data); err != nil {
+		log.Fatal(err)
 	}
 }
