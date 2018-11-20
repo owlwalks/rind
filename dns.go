@@ -3,6 +3,8 @@ package rind
 import (
 	"log"
 	"net"
+	"strings"
+	"sync"
 
 	"golang.org/x/net/dns/dnsmessage"
 )
@@ -18,6 +20,10 @@ type DNSServer interface {
 type DNSService struct {
 	packets chan Packet
 	conn    *net.UDPConn
+	book    struct {
+		sync.RWMutex
+		resources map[string][]dnsmessage.Resource
+	}
 }
 
 // Packet carries DNS packet payload and sender address
@@ -61,28 +67,24 @@ func (s *DNSService) Query(p Packet) {
 		return
 	}
 
-	// locate question
+	// pick question
 	q, err := parser.Question()
 	if err != nil && err != dnsmessage.ErrSectionDone {
 		log.Println(err)
 		return
 	}
 
-	// append answer based on q.Name.String(), fake for now
-	name, err := dnsmessage.NewName(q.Name.String())
-	if err != nil {
-		log.Println(err)
-		return
-	}
+	var sb strings.Builder
+	sb.WriteString(q.Name.String())
+	sb.WriteString(q.Class.String())
+	sb.WriteString(q.Type.String())
 
-	m.Answers = append(m.Answers, dnsmessage.Resource{
-		Header: dnsmessage.ResourceHeader{
-			Name:  name,
-			Type:  dnsmessage.TypeA,
-			Class: dnsmessage.ClassINET,
-		},
-		Body: &dnsmessage.AResource{A: [4]byte{127, 0, 0, 1}},
-	})
+	// answer the question
+	s.book.RLock()
+	if val, ok := s.book.resources[sb.String()]; ok {
+		m.Answers = append(m.Answers, val...)
+	}
+	s.book.RUnlock()
 
 	p.message, err = m.Pack()
 	if err != nil {
