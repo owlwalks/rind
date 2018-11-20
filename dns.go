@@ -4,7 +4,6 @@ import (
 	"log"
 	"net"
 	"strings"
-	"sync"
 
 	"golang.org/x/net/dns/dnsmessage"
 )
@@ -14,11 +13,6 @@ type DNSServer interface {
 	Listen()
 	Query(Packet)
 	Send()
-}
-
-type kv struct {
-	sync.RWMutex
-	data map[string][]dnsmessage.Resource
 }
 
 // DNSService is the implementation of DNSServer interface.
