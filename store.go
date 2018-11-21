@@ -9,6 +9,10 @@ import (
 	"golang.org/x/net/dns/dnsmessage"
 )
 
+func init() {
+	gob.Register(&dnsmessage.AResource{})
+}
+
 type kv struct {
 	sync.RWMutex
 	data     map[string][]dnsmessage.Resource
@@ -28,6 +32,21 @@ func (b *kv) set(key string, resources []dnsmessage.Resource) {
 		b.data[key] = append(b.data[key], resources...)
 	} else {
 		b.data[key] = resources
+	}
+	b.Unlock()
+}
+
+func (b *kv) remove(key string, r *dnsmessage.Resource) {
+	b.Lock()
+	if r == nil {
+		delete(b.data, key)
+	} else {
+		for i, rec := range b.data[key] {
+			if rec.GoString() == r.GoString() {
+				b.data[key] = append(b.data[key][:i], b.data[key][i+1:]...)
+				break
+			}
+		}
 	}
 	b.Unlock()
 }

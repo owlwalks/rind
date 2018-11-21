@@ -3,7 +3,6 @@ package rind
 import (
 	"log"
 	"net"
-	"strings"
 
 	"golang.org/x/net/dns/dnsmessage"
 )
@@ -70,14 +69,9 @@ func (s *DNSService) Query(p Packet) {
 		return
 	}
 
-	var sb strings.Builder
-	sb.WriteString(q.Name.String())
-	sb.WriteString(q.Class.String())
-	sb.WriteString(q.Type.String())
-
 	// answer the question
 	s.book.RLock()
-	if val, ok := s.book.data[sb.String()]; ok {
+	if val, ok := s.book.data[q.GoString()]; ok {
 		m.Answers = append(m.Answers, val...)
 	}
 	s.book.RUnlock()
