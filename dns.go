@@ -30,6 +30,7 @@ type Packet struct {
 
 var (
 	errTypeNotSupport = errors.New("type not support")
+	errIPInvalid      = errors.New("invalid IP address")
 )
 
 // Listen starts a DNS server on port 53
@@ -137,19 +138,34 @@ func toResources(name string, sType string, data []byte) ([]dnsmessage.Resource,
 	case "A":
 		rType = dnsmessage.TypeA
 		ip := net.ParseIP(string(data))
+		if ip == nil {
+			return nil, errIPInvalid
+		}
 		rBody = &dnsmessage.AResource{A: [4]byte{ip[12], ip[13], ip[14], ip[15]}}
 	case "NS":
 		rType = dnsmessage.TypeNS
-		rBody = &dnsmessage.NSResource{}
+		ns, err := dnsmessage.NewName(string(data))
+		if err != nil {
+			return nil, err
+		}
+		rBody = &dnsmessage.NSResource{NS: ns}
 	case "CNAME":
 		rType = dnsmessage.TypeCNAME
-		rBody = &dnsmessage.CNAMEResource{}
+		cname, err := dnsmessage.NewName(string(data))
+		if err != nil {
+			return nil, err
+		}
+		rBody = &dnsmessage.CNAMEResource{CNAME: cname}
 	case "SOA":
 		rType = dnsmessage.TypeSOA
 		rBody = &dnsmessage.SOAResource{}
 	case "PTR":
 		rType = dnsmessage.TypePTR
-		rBody = &dnsmessage.PTRResource{}
+		ptr, err := dnsmessage.NewName(string(data))
+		if err != nil {
+			return nil, err
+		}
+		rBody = &dnsmessage.PTRResource{PTR: ptr}
 	case "MX":
 		rType = dnsmessage.TypeMX
 		rBody = &dnsmessage.MXResource{}
@@ -158,7 +174,13 @@ func toResources(name string, sType string, data []byte) ([]dnsmessage.Resource,
 		rBody = &dnsmessage.TXTResource{}
 	case "AAAA":
 		rType = dnsmessage.TypeAAAA
-		rBody = &dnsmessage.AAAAResource{}
+		ip := net.ParseIP(string(data))
+		if ip == nil {
+			return nil, errIPInvalid
+		}
+		var ipV6 [16]byte
+		copy(ipV6[:], ip)
+		rBody = &dnsmessage.AAAAResource{AAAA: ipV6}
 	case "SRV":
 		rType = dnsmessage.TypeSRV
 		rBody = &dnsmessage.SRVResource{}
