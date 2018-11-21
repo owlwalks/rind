@@ -1,6 +1,7 @@
 package rind
 
 import (
+	"errors"
 	"log"
 	"net"
 
@@ -14,7 +15,7 @@ type DNSServer interface {
 	Send()
 }
 
-// DNSService is the implementation of DNSServer interface.
+// DNSService is an implementation of DNSServer interface.
 type DNSService struct {
 	packets chan Packet
 	conn    *net.UDPConn
@@ -26,6 +27,10 @@ type Packet struct {
 	addr    *net.UDPAddr
 	message []byte
 }
+
+var (
+	errTypeNotSupport = errors.New("type not support")
+)
 
 // Listen starts a DNS server on port 53
 func (s *DNSService) Listen() {
@@ -112,4 +117,66 @@ func Start(nPackets int) {
 	s := New(nPackets)
 	go s.Listen()
 	go s.Send()
+}
+
+func (s *DNSService) save(key string, resources []dnsmessage.Resource) {
+	s.book.set(key, resources)
+	s.book.save()
+}
+
+func toResources(name string, sType string, data []byte) ([]dnsmessage.Resource, error) {
+	rName, err := dnsmessage.NewName(name)
+	if err != nil {
+		return nil, err
+	}
+
+	var rType dnsmessage.Type
+	var rBody dnsmessage.ResourceBody
+
+	switch sType {
+	case "A":
+		rType = dnsmessage.TypeA
+		ip := net.ParseIP(string(data))
+		rBody = &dnsmessage.AResource{A: [4]byte{ip[12], ip[13], ip[14], ip[15]}}
+	case "NS":
+		rType = dnsmessage.TypeNS
+		rBody = &dnsmessage.NSResource{}
+	case "CNAME":
+		rType = dnsmessage.TypeCNAME
+		rBody = &dnsmessage.CNAMEResource{}
+	case "SOA":
+		rType = dnsmessage.TypeSOA
+		rBody = &dnsmessage.SOAResource{}
+	case "PTR":
+		rType = dnsmessage.TypePTR
+		rBody = &dnsmessage.PTRResource{}
+	case "MX":
+		rType = dnsmessage.TypeMX
+		rBody = &dnsmessage.MXResource{}
+	case "TXT":
+		rType = dnsmessage.TypeTXT
+		rBody = &dnsmessage.TXTResource{}
+	case "AAAA":
+		rType = dnsmessage.TypeAAAA
+		rBody = &dnsmessage.AAAAResource{}
+	case "SRV":
+		rType = dnsmessage.TypeSRV
+		rBody = &dnsmessage.SRVResource{}
+	case "OPT":
+		rType = dnsmessage.TypeOPT
+		rBody = &dnsmessage.OPTResource{}
+	default:
+		return nil, errTypeNotSupport
+	}
+
+	return []dnsmessage.Resource{
+		{
+			Header: dnsmessage.ResourceHeader{
+				Name:  rName,
+				Type:  rType,
+				Class: dnsmessage.ClassINET,
+			},
+			Body: rBody,
+		},
+	}, nil
 }
