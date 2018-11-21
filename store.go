@@ -59,6 +59,10 @@ func (b *kv) save() {
 	defer fWriter.Close()
 
 	enc := gob.NewEncoder(fWriter)
+
+	b.RLock()
+	defer b.RUnlock()
+
 	if err = enc.Encode(b.data); err != nil {
 		log.Fatal(err)
 	}
@@ -72,6 +76,10 @@ func (b *kv) load() {
 	defer fReader.Close()
 
 	dec := gob.NewDecoder(fReader)
+
+	b.Lock()
+	defer b.Unlock()
+
 	if err = dec.Decode(&b.data); err != nil {
 		log.Fatal(err)
 	}
