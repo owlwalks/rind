@@ -2,7 +2,6 @@ package rind
 
 import (
 	"encoding/json"
-	"io/ioutil"
 	"net/http"
 )
 
@@ -55,29 +54,37 @@ type get struct {
 	Data string
 }
 
+type update struct {
+	Host    string
+	TTL     uint32
+	Type    string
+	OldData json.RawMessage
+	Data    json.RawMessage
+}
+
+type del struct {
+	Host string
+	Type string
+	Data json.RawMessage
+}
+
 // Create is HTTP handler of POST request.
 // Use for adding new record to DNS server.
 func (s *RestService) Create() http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		body, err := ioutil.ReadAll(r.Body)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-
 		var req post
-		if err = json.Unmarshal(body, &req); err != nil {
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
 
-		resources, err := toResources(req.Host, req.TTL, req.Type, req.Data)
+		resource, err := toResource(req.Host, req.TTL, req.Type, req.Data)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
 
-		s.dns.save("later", resources)
+		s.dns.save(ntString(req.Host, req.Type), resource)
 		w.WriteHeader(http.StatusCreated)
 	})
 }
@@ -86,7 +93,38 @@ func (s *RestService) Create() http.HandlerFunc {
 // Use for reading existed records from DNS server.
 func (s *RestService) Read() http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		enc := json.NewEncoder(w)
-		enc.Encode(s.dns.all())
+		json.NewEncoder(w).Encode(s.dns.all())
+	})
+}
+
+// Delete is HTTP handler of DELETE request.
+// Use for removing records from DNS server.
+func (s *RestService) Delete() http.HandlerFunc {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var req del
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		id := ntString(req.Host, req.Type)
+		ok := false
+		if req.Data != nil {
+			resource, err := toResource(req.Host, 0, req.Type, req.Data)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusBadRequest)
+				return
+			}
+			ok = s.dns.remove(id, &resource)
+		} else {
+			ok = s.dns.remove(id, nil)
+		}
+
+		if ok {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+
+		http.Error(w, "", http.StatusNotFound)
+		return
 	})
 }

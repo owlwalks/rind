@@ -26,29 +26,33 @@ func (b *kv) get(key string) ([]dnsmessage.Resource, bool) {
 	return val, ok
 }
 
-func (b *kv) set(key string, resources []dnsmessage.Resource) {
+func (b *kv) set(key string, resource dnsmessage.Resource) {
 	b.Lock()
 	if _, ok := b.data[key]; ok {
-		b.data[key] = append(b.data[key], resources...)
+		b.data[key] = append(b.data[key], resource)
 	} else {
-		b.data[key] = resources
+		b.data[key] = []dnsmessage.Resource{resource}
 	}
 	b.Unlock()
 }
 
-func (b *kv) remove(key string, r *dnsmessage.Resource) {
+func (b *kv) remove(key string, r *dnsmessage.Resource) bool {
+	ok := false
 	b.Lock()
 	if r == nil {
+		_, ok = b.data[key]
 		delete(b.data, key)
 	} else {
 		for i, rec := range b.data[key] {
-			if rec.GoString() == r.GoString() {
+			if rString(rec) == rString(*r) {
 				b.data[key] = append(b.data[key][:i], b.data[key][i+1:]...)
+				ok = true
 				break
 			}
 		}
 	}
 	b.Unlock()
+	return ok
 }
 
 func (b *kv) save() {
