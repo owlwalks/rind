@@ -19,15 +19,15 @@ type DNSServer interface {
 
 // DNSService is an implementation of DNSServer interface.
 type DNSService struct {
-	packets chan Packet
-	conn    *net.UDPConn
-	book    kv
+	conn       *net.UDPConn
+	book       kv
+	forwarders []*net.UDPAddr
 }
 
 // Packet carries DNS packet payload and sender address.
 type Packet struct {
 	addr    *net.UDPAddr
-	message []byte
+	message *dnsmessage.Message
 }
 
 const (
@@ -44,89 +44,74 @@ var (
 
 // Listen starts a DNS server on port 53
 func (s *DNSService) Listen() {
-	c, err := net.ListenUDP("udp", &net.UDPAddr{Port: udpPort})
+	var err error
+	s.conn, err = net.ListenUDP("udp", &net.UDPAddr{Port: udpPort})
 	if err != nil {
 		log.Fatal(err)
 	}
-	s.conn = c
-	defer c.Close()
+	defer s.conn.Close()
+
 	for {
-		b := make([]byte, packetLen)
-		_, addr, err := c.ReadFromUDP(b)
+		buf := make([]byte, packetLen)
+		_, addr, err := s.conn.ReadFromUDP(buf)
 		if err != nil {
+			log.Println(err)
 			continue
 		}
-		go s.Query(Packet{addr, b})
+		var m dnsmessage.Message
+		err = m.Unpack(buf)
+		if err != nil {
+			log.Println(err)
+			continue
+		}
+		if len(m.Questions) == 0 {
+			continue
+		}
+		go s.Query(Packet{addr, &m})
 	}
 }
 
 // Query lookup answers for DNS message.
 func (s *DNSService) Query(p Packet) {
-	// unpack
-	var m dnsmessage.Message
-	err := m.Unpack(p.message)
-	if err != nil {
-		log.Println(err)
-		return
-	}
-
-	// parse raw message
-	var parser dnsmessage.Parser
-	if _, err := parser.Start(p.message); err != nil {
-		log.Println(err)
-		return
-	}
-
-	// pick question
-	q, err := parser.Question()
-	if err != nil && err != dnsmessage.ErrSectionDone {
-		log.Println(err)
-		return
-	}
+	// was checked before entering this routine
+	q := p.message.Questions[0]
 
 	// answer the question
 	s.book.RLock()
-	if val, ok := s.book.data[qString(q)]; ok {
-		m.Answers = append(m.Answers, val...)
-	}
+	val, ok := s.book.data[qString(q)]
 	s.book.RUnlock()
 
-	p.message, err = m.Pack()
+	if ok {
+		p.message.Answers = append(p.message.Answers, val...)
+	} else {
+		// forwarding
+	}
+
+	go sendPacket(s.conn, p)
+}
+
+func sendPacket(conn *net.UDPConn, p Packet) {
+	message, err := p.message.Pack()
 	if err != nil {
 		log.Println(err)
 		return
 	}
 
-	s.packets <- p
-}
-
-// Send sends DNS message back with answer.
-func (s *DNSService) Send() {
-	for p := range s.packets {
-		go sendPacket(s.conn, p)
-	}
-}
-
-func sendPacket(conn *net.UDPConn, p Packet) {
-	_, err := conn.WriteToUDP(p.message, p.addr)
+	_, err = conn.WriteToUDP(message, p.addr)
 	if err != nil {
 		log.Println(err)
 	}
 }
 
-// New setups a DNSService with custom number of buffered packets.
-// Set nPackets high enough for better throughput.
-func New(nPackets int) DNSService {
-	packets := make(chan Packet, nPackets)
-	return DNSService{packets, nil, kv{data: make(map[string][]dnsmessage.Resource)}}
+// New setups a DNSService, rwDirPath is read-writable directory path for storing dns records.
+func New(rwDirPath string) DNSService {
+	return DNSService{book: kv{data: make(map[string][]dnsmessage.Resource), rwDirPath: rwDirPath}}
 }
 
-// Start convenient init every parts of DNS service.
-// See New for nPackets.
-func Start(nPackets int) {
-	s := New(nPackets)
+// Start conveniently init every parts of DNS service.
+func Start(rwDirPath string) {
+	s := New(rwDirPath)
 	go s.Listen()
-	go s.Send()
 }
 
 func (s *DNSService) save(key string, resource dnsmessage.Resource, old *dnsmessage.Resource) bool {
