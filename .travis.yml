@@ -1,6 +1,6 @@
 language: go
-  go:
-    - 1.11.x
+go:
+  - 1.11.x
 
 script:
   - go get -t -v ./...
