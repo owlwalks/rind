@@ -29,6 +29,13 @@ type Packet struct {
 	message []byte
 }
 
+const (
+	// DNS server default port
+	udpPort int = 53
+	// DNS packet max length
+	packetLen int = 512
+)
+
 var (
 	errTypeNotSupport = errors.New("type not support")
 	errIPInvalid      = errors.New("invalid IP address")
@@ -36,14 +43,14 @@ var (
 
 // Listen starts a DNS server on port 53
 func (s *DNSService) Listen() {
-	c, err := net.ListenUDP("udp", &net.UDPAddr{Port: 53})
+	c, err := net.ListenUDP("udp", &net.UDPAddr{Port: udpPort})
 	if err != nil {
 		log.Fatal(err)
 	}
 	s.conn = c
 	defer c.Close()
 	for {
-		b := make([]byte, 512)
+		b := make([]byte, packetLen)
 		_, addr, err := c.ReadFromUDP(b)
 		if err != nil {
 			continue
@@ -190,9 +197,6 @@ func toResources(name string, sType string, data []byte) ([]dnsmessage.Resource,
 			return nil, err
 		}
 		rBody = &dnsmessage.MXResource{Pref: mx.Pref, MX: mxName}
-	case "TXT":
-		rType = dnsmessage.TypeTXT
-		rBody = &dnsmessage.TXTResource{}
 	case "AAAA":
 		rType = dnsmessage.TypeAAAA
 		ip := net.ParseIP(string(data))
@@ -213,9 +217,10 @@ func toResources(name string, sType string, data []byte) ([]dnsmessage.Resource,
 			return nil, err
 		}
 		rBody = &dnsmessage.SRVResource{Priority: srv.Priority, Weight: srv.Weight, Port: srv.Port, Target: srvTarget}
+	case "TXT":
+		fallthrough
 	case "OPT":
-		rType = dnsmessage.TypeOPT
-		rBody = &dnsmessage.OPTResource{}
+		fallthrough
 	default:
 		return nil, errTypeNotSupport
 	}
