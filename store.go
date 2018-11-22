@@ -84,3 +84,13 @@ func (b *kv) load() {
 		log.Fatal(err)
 	}
 }
+
+func (b *kv) clone() map[string][]dnsmessage.Resource {
+	cp := make(map[string][]dnsmessage.Resource)
+	b.RLock()
+	for k, v := range b.data {
+		cp[k] = v
+	}
+	b.RUnlock()
+	return cp
+}

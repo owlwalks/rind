@@ -133,6 +133,22 @@ func (s *DNSService) save(key string, resources []dnsmessage.Resource) {
 	s.book.save()
 }
 
+func (s *DNSService) all() []get {
+	book := s.book.clone()
+	var recs []get
+	for _, r := range book {
+		for _, v := range r {
+			recs = append(recs, get{
+				Host: v.Header.Name.String(),
+				TTL:  v.Header.TTL,
+				Type: v.Header.Type.String()[4:],
+				Data: v.Body.GoString(),
+			})
+		}
+	}
+	return recs
+}
+
 func toResources(name string, sType string, data []byte) ([]dnsmessage.Resource, error) {
 	rName, err := dnsmessage.NewName(name)
 	if err != nil {

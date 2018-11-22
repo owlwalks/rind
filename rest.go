@@ -20,10 +20,10 @@ type RestService struct {
 }
 
 type post struct {
-	Host string          `json:"host"`
-	TTL  int             `json:"ttl"`
-	Type string          `json:"type"`
-	Data json.RawMessage `json:"data"`
+	Host string
+	TTL  uint32
+	Type string
+	Data json.RawMessage
 }
 
 type postSOA struct {
@@ -46,6 +46,13 @@ type postSRV struct {
 	Weight   uint16
 	Port     uint16
 	Target   json.RawMessage
+}
+
+type get struct {
+	Host string
+	TTL  uint32
+	Type string
+	Data string
 }
 
 // Create is HTTP handler of POST request.
@@ -72,5 +79,14 @@ func (s *RestService) Create() http.HandlerFunc {
 
 		s.dns.save("later", resources)
 		w.WriteHeader(http.StatusCreated)
+	})
+}
+
+// Read is HTTP handler of GET request.
+// Use for reading existed records from DNS server.
+func (s *RestService) Read() http.HandlerFunc {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		enc := json.NewEncoder(w)
+		enc.Encode(s.dns.all())
 	})
 }
