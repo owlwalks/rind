@@ -181,7 +181,15 @@ func toResources(name string, sType string, data []byte) ([]dnsmessage.Resource,
 		rBody = &dnsmessage.PTRResource{PTR: ptr}
 	case "MX":
 		rType = dnsmessage.TypeMX
-		rBody = &dnsmessage.MXResource{}
+		var mx postMX
+		if err = json.Unmarshal(data, &mx); err != nil {
+			return nil, err
+		}
+		mxName, err := dnsmessage.NewName(string(mx.MX))
+		if err != nil {
+			return nil, err
+		}
+		rBody = &dnsmessage.MXResource{Pref: mx.Pref, MX: mxName}
 	case "TXT":
 		rType = dnsmessage.TypeTXT
 		rBody = &dnsmessage.TXTResource{}

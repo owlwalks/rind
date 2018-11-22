@@ -36,6 +36,11 @@ type postSOA struct {
 	MinTTL  uint32
 }
 
+type postMX struct {
+	Pref uint16
+	MX   json.RawMessage
+}
+
 // Create is HTTP handler of POST request.
 // Use for adding new record to DNS server.
 func (s *RestService) Create() http.HandlerFunc {
