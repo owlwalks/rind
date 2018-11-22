@@ -6,13 +6,6 @@ import (
 	"net/http"
 )
 
-type post struct {
-	Host string          `json:"host"`
-	TTL  int             `json:"ttl"`
-	Type string          `json:"type"`
-	Data json.RawMessage `json:"data"`
-}
-
 // RestServer will do CRUD on DNS records
 type RestServer interface {
 	Create() http.HandlerFunc
@@ -26,6 +19,23 @@ type RestService struct {
 	dns DNSService
 }
 
+type post struct {
+	Host string          `json:"host"`
+	TTL  int             `json:"ttl"`
+	Type string          `json:"type"`
+	Data json.RawMessage `json:"data"`
+}
+
+type postSOA struct {
+	NS      json.RawMessage
+	MBox    json.RawMessage
+	Serial  uint32
+	Refresh uint32
+	Retry   uint32
+	Expire  uint32
+	MinTTL  uint32
+}
+
 // Create is HTTP handler of POST request.
 // Use for adding new record to DNS server.
 func (s *RestService) Create() http.HandlerFunc {
@@ -37,7 +47,7 @@ func (s *RestService) Create() http.HandlerFunc {
 		}
 
 		var req post
-		if err = json.Unmarshal(body, req); err != nil {
+		if err = json.Unmarshal(body, &req); err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}

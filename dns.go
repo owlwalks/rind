@@ -1,6 +1,7 @@
 package rind
 
 import (
+	"encoding/json"
 	"errors"
 	"log"
 	"net"
@@ -158,7 +159,19 @@ func toResources(name string, sType string, data []byte) ([]dnsmessage.Resource,
 		rBody = &dnsmessage.CNAMEResource{CNAME: cname}
 	case "SOA":
 		rType = dnsmessage.TypeSOA
-		rBody = &dnsmessage.SOAResource{}
+		var soa postSOA
+		if err = json.Unmarshal(data, &soa); err != nil {
+			return nil, err
+		}
+		soaNS, err := dnsmessage.NewName(string(soa.NS))
+		if err != nil {
+			return nil, err
+		}
+		soaMBox, err := dnsmessage.NewName(string(soa.MBox))
+		if err != nil {
+			return nil, err
+		}
+		rBody = &dnsmessage.SOAResource{NS: soaNS, MBox: soaMBox, Serial: soa.Serial, Refresh: soa.Refresh, Retry: soa.Retry, Expire: soa.Expire}
 	case "PTR":
 		rType = dnsmessage.TypePTR
 		ptr, err := dnsmessage.NewName(string(data))
