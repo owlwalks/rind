@@ -1,6 +1,7 @@
 package rind
 
 import (
+	"fmt"
 	"strings"
 
 	"golang.org/x/net/dns/dnsmessage"
@@ -27,4 +28,9 @@ func rString(r dnsmessage.Resource) string {
 	sb.WriteString(r.Body.GoString())
 
 	return sb.String()
+}
+
+// packet to string
+func pString(p Packet) string {
+	return fmt.Sprint(p.message.ID)
 }
