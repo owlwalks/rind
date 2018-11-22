@@ -255,5 +255,13 @@ func toResource(name string, ttl uint32, sType string, data []byte) (dnsmessage.
 		return rNil, errTypeNotSupport
 	}
 
-	return dnsmessage.Resource{dnsmessage.ResourceHeader{rName, rType, dnsmessage.ClassINET, ttl, 0}, rBody}, nil
+	return dnsmessage.Resource{
+		Header: dnsmessage.ResourceHeader{
+			Name:  rName,
+			Type:  rType,
+			Class: dnsmessage.ClassINET,
+			TTL:   ttl,
+		},
+		Body: rBody,
+	}, nil
 }
