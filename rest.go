@@ -54,7 +54,7 @@ type get struct {
 	Data string
 }
 
-type update struct {
+type put struct {
 	Host    string
 	TTL     uint32
 	Type    string
@@ -84,21 +84,53 @@ func (s *RestService) Create() http.HandlerFunc {
 			return
 		}
 
-		s.dns.save(ntString(req.Host, req.Type), resource)
+		s.dns.save(ntString(req.Host, req.Type), resource, nil)
 		w.WriteHeader(http.StatusCreated)
 	})
 }
 
 // Read is HTTP handler of GET request.
-// Use for reading existed records from DNS server.
+// Use for reading existed records on DNS server.
 func (s *RestService) Read() http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(w).Encode(s.dns.all())
 	})
 }
 
+// Update is HTTP handler of PUT request.
+// Use for updating existed records on DNS server.
+func (s *RestService) Update() http.HandlerFunc {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var req put
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		old, err := toResource(req.Host, req.TTL, req.Type, req.OldData)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		resource, err := toResource(req.Host, req.TTL, req.Type, req.Data)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		ok := s.dns.save(ntString(req.Host, req.Type), resource, &old)
+		if ok {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+
+		http.Error(w, "", http.StatusNotFound)
+	})
+}
+
 // Delete is HTTP handler of DELETE request.
-// Use for removing records from DNS server.
+// Use for removing records on DNS server.
 func (s *RestService) Delete() http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var req del
@@ -125,6 +157,5 @@ func (s *RestService) Delete() http.HandlerFunc {
 		}
 
 		http.Error(w, "", http.StatusNotFound)
-		return
 	})
 }

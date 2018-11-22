@@ -129,9 +129,11 @@ func Start(nPackets int) {
 	go s.Send()
 }
 
-func (s *DNSService) save(key string, resource dnsmessage.Resource) {
-	s.book.set(key, resource)
-	s.book.save()
+func (s *DNSService) save(key string, resource dnsmessage.Resource, old *dnsmessage.Resource) bool {
+	ok := s.book.set(key, resource, old)
+	go s.book.save()
+
+	return ok
 }
 
 func (s *DNSService) all() []get {
@@ -155,7 +157,7 @@ func (s *DNSService) all() []get {
 func (s *DNSService) remove(key string, r *dnsmessage.Resource) bool {
 	ok := s.book.remove(key, r)
 	if ok {
-		s.book.save()
+		go s.book.save()
 	}
 	return ok
 }
