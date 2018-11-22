@@ -204,7 +204,15 @@ func toResources(name string, sType string, data []byte) ([]dnsmessage.Resource,
 		rBody = &dnsmessage.AAAAResource{AAAA: ipV6}
 	case "SRV":
 		rType = dnsmessage.TypeSRV
-		rBody = &dnsmessage.SRVResource{}
+		var srv postSRV
+		if err = json.Unmarshal(data, &srv); err != nil {
+			return nil, err
+		}
+		srvTarget, err := dnsmessage.NewName(string(srv.Target))
+		if err != nil {
+			return nil, err
+		}
+		rBody = &dnsmessage.SRVResource{Priority: srv.Priority, Weight: srv.Weight, Port: srv.Port, Target: srvTarget}
 	case "OPT":
 		rType = dnsmessage.TypeOPT
 		rBody = &dnsmessage.OPTResource{}

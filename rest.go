@@ -41,6 +41,13 @@ type postMX struct {
 	MX   json.RawMessage
 }
 
+type postSRV struct {
+	Priority uint16
+	Weight   uint16
+	Port     uint16
+	Target   json.RawMessage
+}
+
 // Create is HTTP handler of POST request.
 // Use for adding new record to DNS server.
 func (s *RestService) Create() http.HandlerFunc {
