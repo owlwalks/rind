@@ -71,7 +71,7 @@ func (s *RestService) Create() http.HandlerFunc {
 			return
 		}
 
-		resources, err := toResources(req.Host, req.Type, req.Data)
+		resources, err := toResources(req.Host, req.TTL, req.Type, req.Data)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return

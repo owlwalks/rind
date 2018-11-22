@@ -149,7 +149,7 @@ func (s *DNSService) all() []get {
 	return recs
 }
 
-func toResources(name string, sType string, data []byte) ([]dnsmessage.Resource, error) {
+func toResources(name string, ttl uint32, sType string, data []byte) ([]dnsmessage.Resource, error) {
 	rName, err := dnsmessage.NewName(name)
 	if err != nil {
 		return nil, err
@@ -247,6 +247,7 @@ func toResources(name string, sType string, data []byte) ([]dnsmessage.Resource,
 				Name:  rName,
 				Type:  rType,
 				Class: dnsmessage.ClassINET,
+				TTL:   ttl,
 			},
 			Body: rBody,
 		},
