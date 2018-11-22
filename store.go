@@ -2,11 +2,18 @@ package rind
 
 import (
 	"encoding/gob"
+	"io"
 	"log"
 	"os"
+	"path/filepath"
 	"sync"
 
 	"golang.org/x/net/dns/dnsmessage"
+)
+
+const (
+	storeName   string = "store"
+	storeBkName string = "store_bk"
 )
 
 func init() {
@@ -73,18 +80,31 @@ func (b *kv) remove(key string, r *dnsmessage.Resource) bool {
 }
 
 func (b *kv) save() {
-	fWriter, err := os.Create(b.filePath)
+	bk, err := os.OpenFile(filepath.Join(b.filePath, storeBkName), os.O_RDWR|os.O_CREATE, 0666)
 	if err != nil {
-		log.Fatal(err)
+		log.Println(err)
+		return
 	}
-	defer fWriter.Close()
+	defer bk.Close()
 
-	enc := gob.NewEncoder(fWriter)
+	dst, err := os.OpenFile(filepath.Join(b.filePath, storeName), os.O_RDWR|os.O_CREATE, 0666)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	defer dst.Close()
 
-	b.RLock()
-	defer b.RUnlock()
+	// backing up current store
+	_, err = io.Copy(bk, dst)
+	if err != nil {
+		log.Println(err)
+		return
+	}
 
-	if err = enc.Encode(b.data); err != nil {
+	enc := gob.NewEncoder(dst)
+	book := b.clone()
+	if err = enc.Encode(book); err != nil {
+		// main store file is corrupted
 		log.Fatal(err)
 	}
 }
