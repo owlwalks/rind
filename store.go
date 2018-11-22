@@ -22,8 +22,8 @@ func init() {
 
 type kv struct {
 	sync.RWMutex
-	data     map[string][]dnsmessage.Resource
-	filePath string
+	data      map[string][]dnsmessage.Resource
+	rwDirPath string
 }
 
 func (b *kv) get(key string) ([]dnsmessage.Resource, bool) {
@@ -80,14 +80,14 @@ func (b *kv) remove(key string, r *dnsmessage.Resource) bool {
 }
 
 func (b *kv) save() {
-	bk, err := os.OpenFile(filepath.Join(b.filePath, storeBkName), os.O_RDWR|os.O_CREATE, 0666)
+	bk, err := os.OpenFile(filepath.Join(b.rwDirPath, storeBkName), os.O_RDWR|os.O_CREATE, 0666)
 	if err != nil {
 		log.Println(err)
 		return
 	}
 	defer bk.Close()
 
-	dst, err := os.OpenFile(filepath.Join(b.filePath, storeName), os.O_RDWR|os.O_CREATE, 0666)
+	dst, err := os.OpenFile(filepath.Join(b.rwDirPath, storeName), os.O_RDWR|os.O_CREATE, 0666)
 	if err != nil {
 		log.Println(err)
 		return
@@ -110,7 +110,7 @@ func (b *kv) save() {
 }
 
 func (b *kv) load() {
-	fReader, err := os.Open(b.filePath)
+	fReader, err := os.Open(filepath.Join(b.rwDirPath, storeName))
 	if err != nil {
 		log.Fatal(err)
 	}
