@@ -83,21 +83,23 @@ func (s *DNSService) Query(p Packet) {
 
 	if ok {
 		p.message.Answers = append(p.message.Answers, val...)
+		go sendPacket(s.conn, p.message, p.addr)
 	} else {
 		// forwarding
+		for i := 0; i < len(s.forwarders); i++ {
+			go sendPacket(s.conn, p.message, s.forwarders[i])
+		}
 	}
-
-	go sendPacket(s.conn, p)
 }
 
-func sendPacket(conn *net.UDPConn, p Packet) {
-	message, err := p.message.Pack()
+func sendPacket(conn *net.UDPConn, message *dnsmessage.Message, addr *net.UDPAddr) {
+	packed, err := message.Pack()
 	if err != nil {
 		log.Println(err)
 		return
 	}
 
-	_, err = conn.WriteToUDP(message, p.addr)
+	_, err = conn.WriteToUDP(packed, addr)
 	if err != nil {
 		log.Println(err)
 	}
