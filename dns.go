@@ -20,7 +20,7 @@ type DNSServer interface {
 // DNSService is an implementation of DNSServer interface.
 type DNSService struct {
 	conn       *net.UDPConn
-	book       kv
+	book       store
 	forwarders []*net.UDPAddr
 }
 
@@ -77,9 +77,7 @@ func (s *DNSService) Query(p Packet) {
 	q := p.message.Questions[0]
 
 	// answer the question
-	s.book.RLock()
-	val, ok := s.book.data[qString(q)]
-	s.book.RUnlock()
+	val, ok := s.book.get(qString(q))
 
 	if ok {
 		p.message.Answers = append(p.message.Answers, val...)
@@ -107,7 +105,7 @@ func sendPacket(conn *net.UDPConn, message *dnsmessage.Message, addr *net.UDPAdd
 
 // New setups a DNSService, rwDirPath is read-writable directory path for storing dns records.
 func New(rwDirPath string) DNSService {
-	return DNSService{book: kv{data: make(map[string][]dnsmessage.Resource), rwDirPath: rwDirPath}}
+	return DNSService{book: store{data: make(map[string][]dnsmessage.Resource), rwDirPath: rwDirPath}}
 }
 
 // Start conveniently init every parts of DNS service.

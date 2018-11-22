@@ -20,74 +20,74 @@ func init() {
 	gob.Register(&dnsmessage.AResource{})
 }
 
-type kv struct {
+type store struct {
 	sync.RWMutex
 	data      map[string][]dnsmessage.Resource
 	rwDirPath string
 }
 
-func (b *kv) get(key string) ([]dnsmessage.Resource, bool) {
-	b.RLock()
-	val, ok := b.data[key]
-	b.RUnlock()
+func (s *store) get(key string) ([]dnsmessage.Resource, bool) {
+	s.RLock()
+	val, ok := s.data[key]
+	s.RUnlock()
 	return val, ok
 }
 
-func (b *kv) set(key string, resource dnsmessage.Resource, old *dnsmessage.Resource) bool {
+func (s *store) set(key string, resource dnsmessage.Resource, old *dnsmessage.Resource) bool {
 	changed := false
-	b.Lock()
-	if _, ok := b.data[key]; ok {
+	s.Lock()
+	if _, ok := s.data[key]; ok {
 		if old != nil {
-			for i, rec := range b.data[key] {
+			for i, rec := range s.data[key] {
 				if rString(rec) == rString(*old) {
-					b.data[key][i] = resource
+					s.data[key][i] = resource
 					changed = true
 					break
 				}
 			}
 		} else {
-			b.data[key] = append(b.data[key], resource)
+			s.data[key] = append(s.data[key], resource)
 			changed = true
 		}
 	} else {
-		b.data[key] = []dnsmessage.Resource{resource}
+		s.data[key] = []dnsmessage.Resource{resource}
 		changed = true
 	}
-	b.Unlock()
+	s.Unlock()
 
 	return changed
 }
 
-func (b *kv) remove(key string, r *dnsmessage.Resource) bool {
+func (s *store) remove(key string, r *dnsmessage.Resource) bool {
 	ok := false
-	b.Lock()
+	s.Lock()
 	if r == nil {
-		_, ok = b.data[key]
-		delete(b.data, key)
+		_, ok = s.data[key]
+		delete(s.data, key)
 	} else {
-		if _, ok = b.data[key]; ok {
-			for i, rec := range b.data[key] {
+		if _, ok = s.data[key]; ok {
+			for i, rec := range s.data[key] {
 				if rString(rec) == rString(*r) {
-					b.data[key] = append(b.data[key][:i], b.data[key][i+1:]...)
+					s.data[key] = append(s.data[key][:i], s.data[key][i+1:]...)
 					ok = true
 					break
 				}
 			}
 		}
 	}
-	b.Unlock()
+	s.Unlock()
 	return ok
 }
 
-func (b *kv) save() {
-	bk, err := os.OpenFile(filepath.Join(b.rwDirPath, storeBkName), os.O_RDWR|os.O_CREATE, 0666)
+func (s *store) save() {
+	bk, err := os.OpenFile(filepath.Join(s.rwDirPath, storeBkName), os.O_RDWR|os.O_CREATE, 0666)
 	if err != nil {
 		log.Println(err)
 		return
 	}
 	defer bk.Close()
 
-	dst, err := os.OpenFile(filepath.Join(b.rwDirPath, storeName), os.O_RDWR|os.O_CREATE, 0666)
+	dst, err := os.OpenFile(filepath.Join(s.rwDirPath, storeName), os.O_RDWR|os.O_CREATE, 0666)
 	if err != nil {
 		log.Println(err)
 		return
@@ -102,15 +102,15 @@ func (b *kv) save() {
 	}
 
 	enc := gob.NewEncoder(dst)
-	book := b.clone()
+	book := s.clone()
 	if err = enc.Encode(book); err != nil {
 		// main store file is corrupted
 		log.Fatal(err)
 	}
 }
 
-func (b *kv) load() {
-	fReader, err := os.Open(filepath.Join(b.rwDirPath, storeName))
+func (s *store) load() {
+	fReader, err := os.Open(filepath.Join(s.rwDirPath, storeName))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -118,20 +118,20 @@ func (b *kv) load() {
 
 	dec := gob.NewDecoder(fReader)
 
-	b.Lock()
-	defer b.Unlock()
+	s.Lock()
+	defer s.Unlock()
 
-	if err = dec.Decode(&b.data); err != nil {
+	if err = dec.Decode(&s.data); err != nil {
 		log.Fatal(err)
 	}
 }
 
-func (b *kv) clone() map[string][]dnsmessage.Resource {
+func (s *store) clone() map[string][]dnsmessage.Resource {
 	cp := make(map[string][]dnsmessage.Resource)
-	b.RLock()
-	for k, v := range b.data {
+	s.RLock()
+	for k, v := range s.data {
 		cp[k] = v
 	}
-	b.RUnlock()
+	s.RUnlock()
 	return cp
 }
