@@ -100,7 +100,7 @@ func (s *DNSService) Query(p Packet) {
 		// forwarding
 		for i := 0; i < len(s.forwarders); i++ {
 			s.memo.set(pString(p), *p.addr)
-			go sendPacket(s.conn, p.message, &s.forwarders[i])
+			go sendPacket(s.conn, p.message, &(s.forwarders[i]))
 		}
 	}
 }
