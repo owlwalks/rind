@@ -76,10 +76,12 @@ func (s *DNSService) Listen() {
 func (s *DNSService) Query(p Packet) {
 	// got response from forwarder, send it back to client
 	if p.message.Header.Response {
-		if addrs, ok := s.memo.get(pString(p)); ok {
+		key := pString(p)
+		if addrs, ok := s.memo.get(key); ok {
 			for _, addr := range addrs {
 				go sendPacket(s.conn, p.message, &addr)
 			}
+			s.memo.remove(key)
 		}
 		return
 	}
