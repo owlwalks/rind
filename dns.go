@@ -22,7 +22,7 @@ type DNSService struct {
 	conn       *net.UDPConn
 	book       store
 	memo       addrBag
-	forwarders []*net.UDPAddr
+	forwarders []net.UDPAddr
 }
 
 // Packet carries DNS packet payload and sender address.
@@ -78,7 +78,7 @@ func (s *DNSService) Query(p Packet) {
 	if p.message.Header.Response {
 		if addrs, ok := s.memo.get(pString(p)); ok {
 			for _, addr := range addrs {
-				go sendPacket(s.conn, p.message, addr)
+				go sendPacket(s.conn, p.message, &addr)
 			}
 		}
 		return
@@ -96,8 +96,8 @@ func (s *DNSService) Query(p Packet) {
 	} else {
 		// forwarding
 		for i := 0; i < len(s.forwarders); i++ {
-			s.memo.set(pString(p), p.addr)
-			go sendPacket(s.conn, p.message, s.forwarders[i])
+			s.memo.set(pString(p), *p.addr)
+			go sendPacket(s.conn, p.message, &s.forwarders[i])
 		}
 	}
 }
@@ -116,16 +116,16 @@ func sendPacket(conn *net.UDPConn, message *dnsmessage.Message, addr *net.UDPAdd
 }
 
 // New setups a DNSService, rwDirPath is read-writable directory path for storing dns records.
-func New(rwDirPath string, forwarders []*net.UDPAddr) DNSService {
+func New(rwDirPath string, forwarders []net.UDPAddr) DNSService {
 	return DNSService{
 		book:       store{data: make(map[string][]dnsmessage.Resource), rwDirPath: rwDirPath},
-		memo:       addrBag{data: make(map[string][]*net.UDPAddr)},
+		memo:       addrBag{data: make(map[string][]net.UDPAddr)},
 		forwarders: forwarders,
 	}
 }
 
 // Start conveniently init every parts of DNS service.
-func Start(rwDirPath string, forwarders []*net.UDPAddr) {
+func Start(rwDirPath string, forwarders []net.UDPAddr) {
 	s := New(rwDirPath, forwarders)
 	go s.Listen()
 }
