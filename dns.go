@@ -78,6 +78,7 @@ func (s *DNSService) Query(p Packet) {
 	if p.message.Header.Response {
 		key := pString(p)
 		if addrs, ok := s.memo.get(key); ok {
+			go s.saveBulk(qString(p.message.Questions[0]), p.message.Answers)
 			for _, addr := range addrs {
 				go sendPacket(s.conn, p.message, &addr)
 			}
@@ -137,6 +138,11 @@ func (s *DNSService) save(key string, resource dnsmessage.Resource, old *dnsmess
 	go s.book.save()
 
 	return ok
+}
+
+func (s *DNSService) saveBulk(key string, resources []dnsmessage.Resource) {
+	s.book.override(key, resources)
+	go s.book.save()
 }
 
 func (s *DNSService) all() []get {

@@ -58,6 +58,12 @@ func (s *store) set(key string, resource dnsmessage.Resource, old *dnsmessage.Re
 	return changed
 }
 
+func (s *store) override(key string, resources []dnsmessage.Resource) {
+	s.Lock()
+	s.data[key] = resources
+	s.Unlock()
+}
+
 func (s *store) remove(key string, r *dnsmessage.Resource) bool {
 	ok := false
 	s.Lock()
