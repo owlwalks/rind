@@ -8,6 +8,7 @@ Rind is a DNS server with REST interface for records management, best use is for
 Features:
 - [x] DNS server
   - [x] DNS forwarding
+  - [x] DNS caching
   - [x] A record
   - [x] NS record
   - [x] CNAME record
@@ -23,7 +24,7 @@ Features:
   - [x] Delete records
 
 Todo:
-- [ ] DNS caching
+- [ ] Re-forward if TTL is due
 - [ ] TXT record
 - [ ] OPT record
 - [ ] Primary, secondary model
