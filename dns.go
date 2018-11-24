@@ -28,7 +28,7 @@ type DNSService struct {
 // Packet carries DNS packet payload and sender address.
 type Packet struct {
 	addr    *net.UDPAddr
-	message *dnsmessage.Message
+	message dnsmessage.Message
 }
 
 const (
@@ -68,7 +68,7 @@ func (s *DNSService) Listen() {
 		if len(m.Questions) == 0 {
 			continue
 		}
-		go s.Query(Packet{addr, &m})
+		go s.Query(Packet{addr, m})
 	}
 }
 
@@ -105,7 +105,7 @@ func (s *DNSService) Query(p Packet) {
 	}
 }
 
-func sendPacket(conn *net.UDPConn, message *dnsmessage.Message, addr *net.UDPAddr) {
+func sendPacket(conn *net.UDPConn, message dnsmessage.Message, addr *net.UDPAddr) {
 	packed, err := message.Pack()
 	if err != nil {
 		log.Println(err)
