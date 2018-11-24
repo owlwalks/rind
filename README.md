@@ -24,7 +24,6 @@ Features:
   - [x] Delete records
 
 Todo:
-- [ ] Re-forward if TTL is due
 - [ ] TXT record
 - [ ] OPT record
 - [ ] Primary, secondary model
