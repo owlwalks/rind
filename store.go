@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+	"time"
 
 	"golang.org/x/net/dns/dnsmessage"
 )
@@ -22,15 +23,26 @@ func init() {
 
 type store struct {
 	sync.RWMutex
-	data      map[string][]dnsmessage.Resource
+	data      map[string]entry
 	rwDirPath string
+}
+
+type entry struct {
+	resources []dnsmessage.Resource
+	ttl       uint32
+	t         int64
 }
 
 func (s *store) get(key string) ([]dnsmessage.Resource, bool) {
 	s.RLock()
-	val, ok := s.data[key]
+	e, ok := s.data[key]
 	s.RUnlock()
-	return val, ok
+	now := time.Now().Unix()
+	if e.ttl > 1 && (e.t+int64(e.ttl)) >= now {
+		s.remove(key, nil)
+		return nil, false
+	}
+	return e.resources, ok
 }
 
 func (s *store) set(key string, resource dnsmessage.Resource, old *dnsmessage.Resource) bool {
@@ -38,19 +50,26 @@ func (s *store) set(key string, resource dnsmessage.Resource, old *dnsmessage.Re
 	s.Lock()
 	if _, ok := s.data[key]; ok {
 		if old != nil {
-			for i, rec := range s.data[key] {
+			for i, rec := range s.data[key].resources {
 				if rString(rec) == rString(*old) {
-					s.data[key][i] = resource
+					s.data[key].resources[i] = resource
 					changed = true
 					break
 				}
 			}
 		} else {
-			s.data[key] = append(s.data[key], resource)
+			e := s.data[key]
+			e.resources = append(e.resources, resource)
+			s.data[key] = e
 			changed = true
 		}
 	} else {
-		s.data[key] = []dnsmessage.Resource{resource}
+		e := entry{
+			resources: []dnsmessage.Resource{resource},
+			ttl:       resource.Header.TTL,
+			t:         time.Now().Unix(),
+		}
+		s.data[key] = e
 		changed = true
 	}
 	s.Unlock()
@@ -60,7 +79,12 @@ func (s *store) set(key string, resource dnsmessage.Resource, old *dnsmessage.Re
 
 func (s *store) override(key string, resources []dnsmessage.Resource) {
 	s.Lock()
-	s.data[key] = resources
+	e := entry{
+		resources: resources,
+		ttl:       resources[0].Header.TTL,
+		t:         time.Now().Unix(),
+	}
+	s.data[key] = e
 	s.Unlock()
 }
 
@@ -72,9 +96,14 @@ func (s *store) remove(key string, r *dnsmessage.Resource) bool {
 		delete(s.data, key)
 	} else {
 		if _, ok = s.data[key]; ok {
-			for i, rec := range s.data[key] {
+			for i, rec := range s.data[key].resources {
 				if rString(rec) == rString(*r) {
-					s.data[key] = append(s.data[key][:i], s.data[key][i+1:]...)
+					e := s.data[key]
+					copy(e.resources[i:], e.resources[i+1:])
+					var blank dnsmessage.Resource
+					e.resources[len(e.resources)-1] = blank
+					e.resources = e.resources[:len(e.resources)-1]
+					s.data[key] = e
 					ok = true
 					break
 				}
@@ -132,8 +161,8 @@ func (s *store) load() {
 	}
 }
 
-func (s *store) clone() map[string][]dnsmessage.Resource {
-	cp := make(map[string][]dnsmessage.Resource)
+func (s *store) clone() map[string]entry {
+	cp := make(map[string]entry)
 	s.RLock()
 	for k, v := range s.data {
 		cp[k] = v

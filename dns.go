@@ -120,7 +120,7 @@ func sendPacket(conn *net.UDPConn, message dnsmessage.Message, addr net.UDPAddr)
 // New setups a DNSService, rwDirPath is read-writable directory path for storing dns records.
 func New(rwDirPath string, forwarders []net.UDPAddr) DNSService {
 	return DNSService{
-		book:       store{data: make(map[string][]dnsmessage.Resource), rwDirPath: rwDirPath},
+		book:       store{data: make(map[string]entry), rwDirPath: rwDirPath},
 		memo:       addrBag{data: make(map[string][]net.UDPAddr)},
 		forwarders: forwarders,
 	}
@@ -148,7 +148,7 @@ func (s *DNSService) all() []get {
 	book := s.book.clone()
 	var recs []get
 	for _, r := range book {
-		for _, v := range r {
+		for _, v := range r.resources {
 			body := v.Body.GoString()
 			i := strings.Index(body, "{")
 			recs = append(recs, get{
