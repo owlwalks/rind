@@ -1,9 +1,9 @@
-# Rind (REST interfacing DNS server)
+# Rind (RESTful interfacing DNS server)
 
 [![GoDoc](https://godoc.org/github.com/owlwalks/rind?status.svg)](https://godoc.org/github.com/owlwalks/rind)
 [![Build Status](https://travis-ci.com/owlwalks/rind.svg?branch=master)](https://travis-ci.com/owlwalks/rind)
 
-Rind is a DNS server with REST interface for records management, best use is for your local service discovery, DNS forwarding and caching (WIP)
+Rind is a DNS server with REST interface for records management, best use is for your local service discovery, DNS forwarding and caching.
 
 Features:
 - [x] DNS server
