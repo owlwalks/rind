@@ -148,7 +148,7 @@ func (s *DNSService) all() []get {
 	book := s.book.clone()
 	var recs []get
 	for _, r := range book {
-		for _, v := range r.resources {
+		for _, v := range r.Resources {
 			body := v.Body.GoString()
 			i := strings.Index(body, "{")
 			recs = append(recs, get{

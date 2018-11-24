@@ -28,9 +28,9 @@ type store struct {
 }
 
 type entry struct {
-	resources []dnsmessage.Resource
-	ttl       uint32
-	t         int64
+	Resources []dnsmessage.Resource
+	TTL       uint32
+	Created   int64
 }
 
 func (s *store) get(key string) ([]dnsmessage.Resource, bool) {
@@ -38,11 +38,11 @@ func (s *store) get(key string) ([]dnsmessage.Resource, bool) {
 	e, ok := s.data[key]
 	s.RUnlock()
 	now := time.Now().Unix()
-	if e.ttl > 1 && (e.t+int64(e.ttl)) >= now {
+	if e.TTL > 1 && (e.Created+int64(e.TTL)) >= now {
 		s.remove(key, nil)
 		return nil, false
 	}
-	return e.resources, ok
+	return e.Resources, ok
 }
 
 func (s *store) set(key string, resource dnsmessage.Resource, old *dnsmessage.Resource) bool {
@@ -50,24 +50,24 @@ func (s *store) set(key string, resource dnsmessage.Resource, old *dnsmessage.Re
 	s.Lock()
 	if _, ok := s.data[key]; ok {
 		if old != nil {
-			for i, rec := range s.data[key].resources {
+			for i, rec := range s.data[key].Resources {
 				if rString(rec) == rString(*old) {
-					s.data[key].resources[i] = resource
+					s.data[key].Resources[i] = resource
 					changed = true
 					break
 				}
 			}
 		} else {
 			e := s.data[key]
-			e.resources = append(e.resources, resource)
+			e.Resources = append(e.Resources, resource)
 			s.data[key] = e
 			changed = true
 		}
 	} else {
 		e := entry{
-			resources: []dnsmessage.Resource{resource},
-			ttl:       resource.Header.TTL,
-			t:         time.Now().Unix(),
+			Resources: []dnsmessage.Resource{resource},
+			TTL:       resource.Header.TTL,
+			Created:   time.Now().Unix(),
 		}
 		s.data[key] = e
 		changed = true
@@ -80,9 +80,9 @@ func (s *store) set(key string, resource dnsmessage.Resource, old *dnsmessage.Re
 func (s *store) override(key string, resources []dnsmessage.Resource) {
 	s.Lock()
 	e := entry{
-		resources: resources,
-		ttl:       resources[0].Header.TTL,
-		t:         time.Now().Unix(),
+		Resources: resources,
+		TTL:       resources[0].Header.TTL,
+		Created:   time.Now().Unix(),
 	}
 	s.data[key] = e
 	s.Unlock()
@@ -96,13 +96,13 @@ func (s *store) remove(key string, r *dnsmessage.Resource) bool {
 		delete(s.data, key)
 	} else {
 		if _, ok = s.data[key]; ok {
-			for i, rec := range s.data[key].resources {
+			for i, rec := range s.data[key].Resources {
 				if rString(rec) == rString(*r) {
 					e := s.data[key]
-					copy(e.resources[i:], e.resources[i+1:])
+					copy(e.Resources[i:], e.Resources[i+1:])
 					var blank dnsmessage.Resource
-					e.resources[len(e.resources)-1] = blank
-					e.resources = e.resources[:len(e.resources)-1]
+					e.Resources[len(e.Resources)-1] = blank
+					e.Resources = e.Resources[:len(e.Resources)-1]
 					s.data[key] = e
 					ok = true
 					break
