@@ -14,7 +14,6 @@ import (
 type DNSServer interface {
 	Listen()
 	Query(Packet)
-	Send()
 }
 
 // DNSService is an implementation of DNSServer interface.
@@ -76,13 +75,13 @@ func (s *DNSService) Listen() {
 func (s *DNSService) Query(p Packet) {
 	// got response from forwarder, send it back to client
 	if p.message.Header.Response {
-		key := pString(p)
-		if addrs, ok := s.memo.get(key); ok {
-			go s.saveBulk(qString(p.message.Questions[0]), p.message.Answers)
+		pKey := pString(p)
+		if addrs, ok := s.memo.get(pKey); ok {
 			for _, addr := range addrs {
 				go sendPacket(s.conn, p.message, addr)
 			}
-			s.memo.remove(key)
+			s.memo.remove(pKey)
+			go s.saveBulk(qString(p.message.Questions[0]), p.message.Answers)
 		}
 		return
 	}
