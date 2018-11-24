@@ -1,4 +1,4 @@
-# Rind (RESTful interfacing DNS server)
+# Rind (REST interfacing DNS server)
 
 [![GoDoc](https://godoc.org/github.com/owlwalks/rind?status.svg)](https://godoc.org/github.com/owlwalks/rind)
 [![Build Status](https://travis-ci.com/owlwalks/rind.svg?branch=master)](https://travis-ci.com/owlwalks/rind)
