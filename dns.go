@@ -27,7 +27,7 @@ type DNSService struct {
 
 // Packet carries DNS packet payload and sender address.
 type Packet struct {
-	addr    *net.UDPAddr
+	addr    net.UDPAddr
 	message dnsmessage.Message
 }
 
@@ -68,7 +68,7 @@ func (s *DNSService) Listen() {
 		if len(m.Questions) == 0 {
 			continue
 		}
-		go s.Query(Packet{addr, m})
+		go s.Query(Packet{*addr, m})
 	}
 }
 
@@ -80,7 +80,7 @@ func (s *DNSService) Query(p Packet) {
 		if addrs, ok := s.memo.get(key); ok {
 			go s.saveBulk(qString(p.message.Questions[0]), p.message.Answers)
 			for _, addr := range addrs {
-				go sendPacket(s.conn, p.message, &addr)
+				go sendPacket(s.conn, p.message, addr)
 			}
 			s.memo.remove(key)
 		}
@@ -99,20 +99,20 @@ func (s *DNSService) Query(p Packet) {
 	} else {
 		// forwarding
 		for i := 0; i < len(s.forwarders); i++ {
-			s.memo.set(pString(p), *p.addr)
-			go sendPacket(s.conn, p.message, &(s.forwarders[i]))
+			s.memo.set(pString(p), p.addr)
+			go sendPacket(s.conn, p.message, s.forwarders[i])
 		}
 	}
 }
 
-func sendPacket(conn *net.UDPConn, message dnsmessage.Message, addr *net.UDPAddr) {
+func sendPacket(conn *net.UDPConn, message dnsmessage.Message, addr net.UDPAddr) {
 	packed, err := message.Pack()
 	if err != nil {
 		log.Println(err)
 		return
 	}
 
-	_, err = conn.WriteToUDP(packed, addr)
+	_, err = conn.WriteToUDP(packed, &addr)
 	if err != nil {
 		log.Println(err)
 	}
