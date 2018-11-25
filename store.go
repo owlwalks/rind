@@ -42,7 +42,7 @@ func (s *store) get(key string) ([]dnsmessage.Resource, bool) {
 	e, ok := s.data[key]
 	s.RUnlock()
 	now := time.Now().Unix()
-	if e.TTL > 1 && (e.Created+int64(e.TTL)) >= now {
+	if e.TTL > 1 && (e.Created+int64(e.TTL) < now) {
 		s.remove(key, nil)
 		return nil, false
 	}
