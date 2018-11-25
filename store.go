@@ -85,8 +85,10 @@ func (s *store) override(key string, resources []dnsmessage.Resource) {
 	s.Lock()
 	e := entry{
 		Resources: resources,
-		TTL:       resources[0].Header.TTL,
 		Created:   time.Now().Unix(),
+	}
+	if len(resources) > 0 {
+		e.TTL = resources[0].Header.TTL
 	}
 	s.data[key] = e
 	s.Unlock()

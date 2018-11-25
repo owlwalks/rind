@@ -133,6 +133,7 @@ func New(rwDirPath string, forwarders []net.UDPAddr) DNSService {
 // Start conveniently init every parts of DNS service.
 func Start(rwDirPath string, forwarders []net.UDPAddr) *DNSService {
 	s := New(rwDirPath, forwarders)
+	s.book.load()
 	go s.Listen()
 
 	return &s
