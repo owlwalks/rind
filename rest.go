@@ -19,7 +19,7 @@ type RestServer interface {
 
 // RestService is an implementation of RestServer interface.
 type RestService struct {
-	dns DNSService
+	Dn *DNSService
 }
 
 type post struct {
@@ -74,92 +74,86 @@ type del struct {
 
 // Create is HTTP handler of POST request.
 // Use for adding new record to DNS server.
-func (s *RestService) Create() http.HandlerFunc {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		var req post
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
+func (s *RestService) Create(w http.ResponseWriter, r *http.Request) {
+	var req post
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
 
-		resource, err := toResource(req.Host, req.TTL, req.Type, req.Data)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
+	resource, err := toResource(req.Host, req.TTL, req.Type, req.Data)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
 
-		s.dns.save(ntString(req.Host, req.Type), resource, nil)
-		w.WriteHeader(http.StatusCreated)
-	})
+	s.Dn.save(ntString(resource.Header.Name, resource.Header.Type), resource, nil)
+	w.WriteHeader(http.StatusCreated)
 }
 
 // Read is HTTP handler of GET request.
 // Use for reading existed records on DNS server.
-func (s *RestService) Read() http.HandlerFunc {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		json.NewEncoder(w).Encode(s.dns.all())
-	})
+func (s *RestService) Read(w http.ResponseWriter, r *http.Request) {
+	json.NewEncoder(w).Encode(s.Dn.all())
 }
 
 // Update is HTTP handler of PUT request.
 // Use for updating existed records on DNS server.
-func (s *RestService) Update() http.HandlerFunc {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		var req put
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
+func (s *RestService) Update(w http.ResponseWriter, r *http.Request) {
+	var req put
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
 
-		old, err := toResource(req.Host, req.TTL, req.Type, req.OldData)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
+	old, err := toResource(req.Host, req.TTL, req.Type, req.OldData)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
 
-		resource, err := toResource(req.Host, req.TTL, req.Type, req.Data)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
+	resource, err := toResource(req.Host, req.TTL, req.Type, req.Data)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
 
-		ok := s.dns.save(ntString(req.Host, req.Type), resource, &old)
-		if ok {
-			w.WriteHeader(http.StatusOK)
-			return
-		}
+	ok := s.Dn.save(ntString(resource.Header.Name, resource.Header.Type), resource, &old)
+	if ok {
+		w.WriteHeader(http.StatusOK)
+		return
+	}
 
-		http.Error(w, "", http.StatusNotFound)
-	})
+	http.Error(w, "", http.StatusNotFound)
 }
 
 // Delete is HTTP handler of DELETE request.
 // Use for removing records on DNS server.
-func (s *RestService) Delete() http.HandlerFunc {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		var req del
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+func (s *RestService) Delete(w http.ResponseWriter, r *http.Request) {
+	var req del
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	ok := false
+	if req.Data != nil {
+		resource, err := toResource(req.Host, 0, req.Type, req.Data)
+		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
-		id := ntString(req.Host, req.Type)
-		ok := false
-		if req.Data != nil {
-			resource, err := toResource(req.Host, 0, req.Type, req.Data)
-			if err != nil {
-				http.Error(w, err.Error(), http.StatusBadRequest)
-				return
-			}
-			ok = s.dns.remove(id, &resource)
-		} else {
-			ok = s.dns.remove(id, nil)
+		ok = s.Dn.remove(ntString(resource.Header.Name, resource.Header.Type), &resource)
+	} else {
+		h, err := toResourceHeader(req.Host, req.Type)
+		if err == nil {
+			ok = s.Dn.remove(ntString(h.Name, h.Type), nil)
 		}
+	}
 
-		if ok {
-			w.WriteHeader(http.StatusOK)
-			return
-		}
+	if ok {
+		w.WriteHeader(http.StatusOK)
+		return
+	}
 
-		http.Error(w, "", http.StatusNotFound)
-	})
+	http.Error(w, "", http.StatusNotFound)
 }

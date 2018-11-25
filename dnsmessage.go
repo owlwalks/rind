@@ -13,15 +13,26 @@ import (
 
 // question to string
 func qString(q dnsmessage.Question) string {
-	var sb strings.Builder
-	sb.Write(q.Name.Data[:])
-	sb.WriteString(q.Type.String())
-	return sb.String()
+	b := make([]byte, q.Name.Length+2)
+	for i := 0; i < int(q.Name.Length); i++ {
+		b[i] = q.Name.Data[i]
+	}
+	b[q.Name.Length] = uint8(q.Type >> 8)
+	b[q.Name.Length+1] = uint8(q.Type & 0xff)
+
+	return string(b)
 }
 
 // resource name and type to string
-func ntString(name string, rType string) string {
-	return name + rType
+func ntString(rName dnsmessage.Name, rType dnsmessage.Type) string {
+	b := make([]byte, rName.Length+2)
+	for i := 0; i < int(rName.Length); i++ {
+		b[i] = rName.Data[i]
+	}
+	b[rName.Length] = uint8(rType >> 8)
+	b[rName.Length+1] = uint8(rType & 0xff)
+
+	return string(b)
 }
 
 // resource to string

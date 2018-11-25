@@ -131,9 +131,11 @@ func New(rwDirPath string, forwarders []net.UDPAddr) DNSService {
 }
 
 // Start conveniently init every parts of DNS service.
-func Start(rwDirPath string, forwarders []net.UDPAddr) {
+func Start(rwDirPath string, forwarders []net.UDPAddr) *DNSService {
 	s := New(rwDirPath, forwarders)
 	go s.Listen()
+
+	return &s
 }
 
 func (s *DNSService) save(key string, resource dnsmessage.Resource, old *dnsmessage.Resource) bool {
@@ -276,4 +278,40 @@ func toResource(name string, ttl uint32, sType string, data []byte) (dnsmessage.
 		},
 		Body: rBody,
 	}, nil
+}
+
+func toRType(sType string) dnsmessage.Type {
+	switch sType {
+	case "A":
+		return dnsmessage.TypeA
+	case "NS":
+		return dnsmessage.TypeNS
+	case "CNAME":
+		return dnsmessage.TypeCNAME
+	case "SOA":
+		return dnsmessage.TypeSOA
+	case "PTR":
+		return dnsmessage.TypePTR
+	case "MX":
+		return dnsmessage.TypeMX
+	case "AAAA":
+		return dnsmessage.TypeAAAA
+	case "SRV":
+		return dnsmessage.TypeSRV
+	case "TXT":
+		return dnsmessage.TypeTXT
+	case "OPT":
+		return dnsmessage.TypeOPT
+	default:
+		return 0
+	}
+}
+
+func toResourceHeader(name string, sType string) (h dnsmessage.ResourceHeader, err error) {
+	h.Name, err = dnsmessage.NewName(name)
+	if err != nil {
+		return
+	}
+	h.Type = toRType(sType)
+	return
 }
