@@ -23,6 +23,15 @@ const (
 
 func init() {
 	gob.Register(&dnsmessage.AResource{})
+	gob.Register(&dnsmessage.NSResource{})
+	gob.Register(&dnsmessage.CNAMEResource{})
+	gob.Register(&dnsmessage.SOAResource{})
+	gob.Register(&dnsmessage.PTRResource{})
+	gob.Register(&dnsmessage.MXResource{})
+	gob.Register(&dnsmessage.AAAAResource{})
+	gob.Register(&dnsmessage.SRVResource{})
+	gob.Register(&dnsmessage.TXTResource{})
+	gob.Register(&dnsmessage.PTRResource{})
 }
 
 type store struct {
