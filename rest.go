@@ -22,16 +22,23 @@ type RestService struct {
 	Dn *DNSService
 }
 
-type post struct {
-	Host string
-	TTL  uint32
-	Type string
-	Data json.RawMessage
+type request struct {
+	Host    string
+	TTL     uint32
+	Type    string
+	Data    string
+	OldData string
+	SOA     requestSOA
+	OldSOA  requestSOA
+	MX      requestMX
+	OldMX   requestMX
+	SRV     requestSRV
+	OldSRV  requestSRV
 }
 
-type postSOA struct {
-	NS      json.RawMessage
-	MBox    json.RawMessage
+type requestSOA struct {
+	NS      string
+	MBox    string
 	Serial  uint32
 	Refresh uint32
 	Retry   uint32
@@ -39,16 +46,16 @@ type postSOA struct {
 	MinTTL  uint32
 }
 
-type postMX struct {
+type requestMX struct {
 	Pref uint16
-	MX   json.RawMessage
+	MX   string
 }
 
-type postSRV struct {
+type requestSRV struct {
 	Priority uint16
 	Weight   uint16
 	Port     uint16
-	Target   json.RawMessage
+	Target   string
 }
 
 type get struct {
@@ -58,30 +65,16 @@ type get struct {
 	Data string
 }
 
-type put struct {
-	Host    string
-	TTL     uint32
-	Type    string
-	OldData json.RawMessage
-	Data    json.RawMessage
-}
-
-type del struct {
-	Host string
-	Type string
-	Data json.RawMessage
-}
-
 // Create is HTTP handler of POST request.
 // Use for adding new record to DNS server.
 func (s *RestService) Create(w http.ResponseWriter, r *http.Request) {
-	var req post
+	var req request
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	resource, err := toResource(req.Host, req.TTL, req.Type, req.Data)
+	resource, err := toResource(req)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -100,19 +93,20 @@ func (s *RestService) Read(w http.ResponseWriter, r *http.Request) {
 // Update is HTTP handler of PUT request.
 // Use for updating existed records on DNS server.
 func (s *RestService) Update(w http.ResponseWriter, r *http.Request) {
-	var req put
+	var req request
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	old, err := toResource(req.Host, req.TTL, req.Type, req.OldData)
+	oldReq := request{Host: req.Host, Type: req.Type, Data: req.OldData}
+	old, err := toResource(oldReq)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	resource, err := toResource(req.Host, req.TTL, req.Type, req.Data)
+	resource, err := toResource(req)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -130,24 +124,16 @@ func (s *RestService) Update(w http.ResponseWriter, r *http.Request) {
 // Delete is HTTP handler of DELETE request.
 // Use for removing records on DNS server.
 func (s *RestService) Delete(w http.ResponseWriter, r *http.Request) {
-	var req del
+	var req request
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
+
 	ok := false
-	if req.Data != nil {
-		resource, err := toResource(req.Host, 0, req.Type, req.Data)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
-		ok = s.Dn.remove(ntString(resource.Header.Name, resource.Header.Type), &resource)
-	} else {
-		h, err := toResourceHeader(req.Host, req.Type)
-		if err == nil {
-			ok = s.Dn.remove(ntString(h.Name, h.Type), nil)
-		}
+	h, err := toResourceHeader(req.Host, req.Type)
+	if err == nil {
+		ok = s.Dn.remove(ntString(h.Name, h.Type), nil)
 	}
 
 	if ok {

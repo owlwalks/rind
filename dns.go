@@ -5,11 +5,9 @@
 package rind
 
 import (
-	"encoding/json"
 	"errors"
 	"log"
 	"net"
-	"strconv"
 	"strings"
 
 	"golang.org/x/net/dns/dnsmessage"
@@ -178,90 +176,79 @@ func (s *DNSService) remove(key string, r *dnsmessage.Resource) bool {
 	return ok
 }
 
-func toResource(name string, ttl uint32, sType string, data []byte) (dnsmessage.Resource, error) {
-	rName, err := dnsmessage.NewName(name)
-	rNil := dnsmessage.Resource{}
+func toResource(req request) (dnsmessage.Resource, error) {
+	rName, err := dnsmessage.NewName(req.Host)
+	none := dnsmessage.Resource{}
 	if err != nil {
-		return rNil, err
+		return none, err
 	}
 
 	var rType dnsmessage.Type
 	var rBody dnsmessage.ResourceBody
 
-	switch sType {
+	switch req.Type {
 	case "A":
 		rType = dnsmessage.TypeA
-		ipStr, _ := strconv.Unquote(string(data))
-		ip := net.ParseIP(ipStr)
+		ip := net.ParseIP(req.Data)
 		if ip == nil {
-			return rNil, errIPInvalid
+			return none, errIPInvalid
 		}
 		rBody = &dnsmessage.AResource{A: [4]byte{ip[12], ip[13], ip[14], ip[15]}}
 	case "NS":
 		rType = dnsmessage.TypeNS
-		ns, err := dnsmessage.NewName(string(data))
+		ns, err := dnsmessage.NewName(req.Data)
 		if err != nil {
-			return rNil, err
+			return none, err
 		}
 		rBody = &dnsmessage.NSResource{NS: ns}
 	case "CNAME":
 		rType = dnsmessage.TypeCNAME
-		cname, err := dnsmessage.NewName(string(data))
+		cname, err := dnsmessage.NewName(req.Data)
 		if err != nil {
-			return rNil, err
+			return none, err
 		}
 		rBody = &dnsmessage.CNAMEResource{CNAME: cname}
 	case "SOA":
 		rType = dnsmessage.TypeSOA
-		var soa postSOA
-		if err = json.Unmarshal(data, &soa); err != nil {
-			return rNil, err
-		}
-		soaNS, err := dnsmessage.NewName(string(soa.NS))
+		soa := req.SOA
+		soaNS, err := dnsmessage.NewName(soa.NS)
 		if err != nil {
-			return rNil, err
+			return none, err
 		}
-		soaMBox, err := dnsmessage.NewName(string(soa.MBox))
+		soaMBox, err := dnsmessage.NewName(soa.MBox)
 		if err != nil {
-			return rNil, err
+			return none, err
 		}
 		rBody = &dnsmessage.SOAResource{NS: soaNS, MBox: soaMBox, Serial: soa.Serial, Refresh: soa.Refresh, Retry: soa.Retry, Expire: soa.Expire}
 	case "PTR":
 		rType = dnsmessage.TypePTR
-		ptr, err := dnsmessage.NewName(string(data))
+		ptr, err := dnsmessage.NewName(req.Data)
 		if err != nil {
-			return rNil, err
+			return none, err
 		}
 		rBody = &dnsmessage.PTRResource{PTR: ptr}
 	case "MX":
 		rType = dnsmessage.TypeMX
-		var mx postMX
-		if err = json.Unmarshal(data, &mx); err != nil {
-			return rNil, err
-		}
-		mxName, err := dnsmessage.NewName(string(mx.MX))
+		mxName, err := dnsmessage.NewName(req.MX.MX)
 		if err != nil {
-			return rNil, err
+			return none, err
 		}
-		rBody = &dnsmessage.MXResource{Pref: mx.Pref, MX: mxName}
+		rBody = &dnsmessage.MXResource{Pref: req.MX.Pref, MX: mxName}
 	case "AAAA":
 		rType = dnsmessage.TypeAAAA
-		ip := net.ParseIP(string(data))
+		ip := net.ParseIP(req.Data)
 		if ip == nil {
-			return rNil, errIPInvalid
+			return none, errIPInvalid
 		}
 		var ipV6 [16]byte
 		copy(ipV6[:], ip)
 		rBody = &dnsmessage.AAAAResource{AAAA: ipV6}
 	case "SRV":
 		rType = dnsmessage.TypeSRV
-		var srv postSRV
-		if err = json.Unmarshal(data, &srv); err != nil {
-			return rNil, err
-		}
-		srvTarget, err := dnsmessage.NewName(string(srv.Target))
+		srv := req.SRV
+		srvTarget, err := dnsmessage.NewName(srv.Target)
 		if err != nil {
-			return rNil, err
+			return none, err
 		}
 		rBody = &dnsmessage.SRVResource{Priority: srv.Priority, Weight: srv.Weight, Port: srv.Port, Target: srvTarget}
 	case "TXT":
@@ -269,7 +256,7 @@ func toResource(name string, ttl uint32, sType string, data []byte) (dnsmessage.
 	case "OPT":
 		fallthrough
 	default:
-		return rNil, errTypeNotSupport
+		return none, errTypeNotSupport
 	}
 
 	return dnsmessage.Resource{
@@ -277,7 +264,7 @@ func toResource(name string, ttl uint32, sType string, data []byte) (dnsmessage.
 			Name:  rName,
 			Type:  rType,
 			Class: dnsmessage.ClassINET,
-			TTL:   ttl,
+			TTL:   req.TTL,
 		},
 		Body: rBody,
 	}, nil
