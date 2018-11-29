@@ -2,6 +2,8 @@ language: go
 go:
   - 1.11.x
 
+go_import_path: owlwalks/rind
+
 script:
   - go get -t -v ./...
   - go tool vet .
