@@ -33,7 +33,7 @@ curl -X POST \
 	}
 }'
 
-// Update a A record from 124.108.115.87 to 127.0.0.1
+// Update an A record from 124.108.115.87 to 127.0.0.1
 curl -X PUT \
   http://localhost/dns \
   -H 'Content-Type: application/json' \
