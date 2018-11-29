@@ -6,7 +6,7 @@
 Rind is a DNS server with REST interface for records management, best use is for your local service discovery, DNS forwarding and caching.
 
 ## Examples
-See complete example [here](https://github.com/owlwalks/rind/blob/master/rind/main.go))
+See complete example [here](https://github.com/owlwalks/rind/blob/master/rind/main.go)
 
 Start DNS server:
 ```golang
