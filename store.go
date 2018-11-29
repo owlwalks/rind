@@ -162,7 +162,8 @@ func (s *store) save() {
 func (s *store) load() {
 	fReader, err := os.Open(filepath.Join(s.rwDirPath, storeName))
 	if err != nil {
-		log.Fatal(err)
+		log.Println(err)
+		return
 	}
 	defer fReader.Close()
 
