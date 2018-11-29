@@ -2,7 +2,7 @@ language: go
 go:
   - 1.11.x
 
-go_import_path: owlwalks/rind
+go_import_path: github.com/owlwalks/rind
 
 script:
   - go get -t -v ./...
