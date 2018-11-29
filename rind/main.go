@@ -4,7 +4,8 @@ import (
 	"log"
 	"net"
 	"net/http"
-	"rind"
+
+	"github.com/owlwalks/rind"
 )
 
 func main() {
