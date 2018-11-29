@@ -9,6 +9,7 @@ import (
 	"errors"
 	"log"
 	"net"
+	"strconv"
 	"strings"
 
 	"golang.org/x/net/dns/dnsmessage"
@@ -190,7 +191,8 @@ func toResource(name string, ttl uint32, sType string, data []byte) (dnsmessage.
 	switch sType {
 	case "A":
 		rType = dnsmessage.TypeA
-		ip := net.ParseIP(string(data))
+		ipStr, _ := strconv.Unquote(string(data))
+		ip := net.ParseIP(ipStr)
 		if ip == nil {
 			return rNil, errIPInvalid
 		}
