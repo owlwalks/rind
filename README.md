@@ -5,7 +5,8 @@
 
 Rind is a DNS server with REST interface for records management, best use is for your local service discovery, DNS forwarding and caching.
 
-Example (complete example [here](https://github.com/owlwalks/rind/blob/master/rind/main.go)):
+## Examples
+See complete example [here](https://github.com/owlwalks/rind/blob/master/rind/main.go))
 
 Start DNS server:
 ```golang
@@ -14,39 +15,47 @@ import github.com/owlwalks/rind
 rind.Start("rw-dirpath", []net.UDPAddr{{IP: net.IP{1, 1, 1, 1}, Port: 53}})
 ```
 
-Start Http Server
-```golang
-import github.com/owlwalks/rind
+## Manage records
+```shell
+// Add a SRV record
+curl -X POST \
+  http://localhost/dns \
+  -H 'Content-Type: application/json' \
+  -d '{
+	"Host": "_sip._tcp.example.com.",
+	"TTL": 300,
+	"Type": "SRV",
+	"SRV": {
+		"Priority": 0,
+		"Weight": 5,
+		"Port": 5060,
+		"Target": "sipserver.example.com."
+	}
+}'
 
-rest := rind.RestService{}
+// Update a A record from 124.108.115.87 to 127.0.0.1
+curl -X PUT \
+  http://localhost/dns \
+  -H 'Content-Type: application/json' \
+  -d '{
+	"Host": "example.com.",
+	"TTL": 600,
+	"Type": "A",
+	"OldData": "124.108.115.87",
+	"Data": "127.0.0.1"
+}'
 
-withAuth := func(h http.HandlerFunc) http.HandlerFunc {
-  // authentication intercepting
-  var _ = "intercept"
-  return func(w http.ResponseWriter, r *http.Request) {
-    h(w, r)
-  }
-}
-
-dnsHandler := func() http.HandlerFunc {
-  return func(w http.ResponseWriter, r *http.Request) {
-    switch r.Method {
-    case http.MethodPost:
-      rest.Create(w, r)
-    case http.MethodGet:
-      rest.Read(w, r)
-    case http.MethodPut:
-      rest.Update(w, r)
-    case http.MethodDelete:
-      rest.Delete(w, r)
-    }
-  }
-}
-
-http.Handle("/dns", withAuth(dnsHandler()))
+// Delete a record
+curl -X DELETE \
+  http://localhost/dns \
+  -H 'Content-Type: application/json' \
+  -d '{
+	"Host": "example.com.",
+	"Type": "A"
+}'
 ```
 
-Features:
+## Features:
 - [x] DNS server
   - [x] DNS forwarding
   - [x] DNS caching
