@@ -18,7 +18,7 @@ func qString(q dnsmessage.Question) string {
 		b[i] = q.Name.Data[i]
 	}
 	b[q.Name.Length] = uint8(q.Type >> 8)
-	b[q.Name.Length+1] = uint8(q.Type & 0xff)
+	b[q.Name.Length+1] = uint8(q.Type)
 
 	return string(b)
 }
@@ -30,7 +30,7 @@ func ntString(rName dnsmessage.Name, rType dnsmessage.Type) string {
 		b[i] = rName.Data[i]
 	}
 	b[rName.Length] = uint8(rType >> 8)
-	b[rName.Length+1] = uint8(rType & 0xff)
+	b[rName.Length+1] = uint8(rType)
 
 	return string(b)
 }
