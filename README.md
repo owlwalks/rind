@@ -24,6 +24,4 @@ Features:
   - [x] Delete records
 
 Todo:
-- [ ] TXT record
-- [ ] OPT record
 - [ ] Primary, secondary model
