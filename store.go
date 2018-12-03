@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"golang.org/x/net/dns/dnsmessage"
+	"github.com/golang/glog"
 )
 
 const (
@@ -132,14 +133,14 @@ func (s *store) remove(key string, r *dnsmessage.Resource) bool {
 func (s *store) save() {
 	bk, err := os.OpenFile(filepath.Join(s.rwDirPath, storeBkName), os.O_RDWR|os.O_CREATE, 0666)
 	if err != nil {
-		log.Println(err)
+		glog.Errorf("err open store bak file %v",err)
 		return
 	}
 	defer bk.Close()
 
 	dst, err := os.OpenFile(filepath.Join(s.rwDirPath, storeName), os.O_RDWR|os.O_CREATE, 0666)
 	if err != nil {
-		log.Println(err)
+		glog.Errorf("err open store file %v",err)
 		return
 	}
 	defer dst.Close()
@@ -147,7 +148,7 @@ func (s *store) save() {
 	// backing up current store
 	_, err = io.Copy(bk, dst)
 	if err != nil {
-		log.Println(err)
+		glog.Errorf("err copy store file %v",err)
 		return
 	}
 
@@ -162,7 +163,7 @@ func (s *store) save() {
 func (s *store) load() {
 	fReader, err := os.Open(filepath.Join(s.rwDirPath, storeName))
 	if err != nil {
-		log.Println(err)
+		glog.Errorf("err load store file %v maybe first start,please ignore",err)
 		return
 	}
 	defer fReader.Close()
@@ -173,7 +174,7 @@ func (s *store) load() {
 	defer s.Unlock()
 
 	if err = dec.Decode(&s.data); err != nil {
-		log.Fatal(err)
+		glog.Fatalf("err decode store file %v",err)
 	}
 }
 
