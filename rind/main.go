@@ -6,10 +6,23 @@ import (
 	"net/http"
 
 	"github.com/owlwalks/rind"
+	"flag"
+	"os"
+	"github.com/golang/glog"
 )
 
+var rwDirPath   = flag.String("rwdir","/var/dns","dns storage dir")
+var listenIP    = flag.String("listenip", "8.8.8.8", "dns forward ip")
+var listenPort  = flag.Int("listenport", 53, "dns forward port")
+
 func main() {
-	dns := rind.Start("", []net.UDPAddr{{IP: net.IP{1, 1, 1, 1}, Port: 53}})
+	flag.Parse()
+	if err := os.MkdirAll(*rwDirPath, 0666); err != nil {
+		glog.Errorf("create rwdirpath: %v error: %v", *rwDirPath, err)
+		return
+	}
+	glog.Info("starting rind")
+	dns := rind.Start(*rwDirPath, []net.UDPAddr{{IP: net.ParseIP(*listenIP), Port: *listenPort}})
 	rest := rind.RestService{Dn: dns}
 
 	dnsHandler := func() http.HandlerFunc {
