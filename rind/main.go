@@ -17,7 +17,7 @@ var listenPort  = flag.Int("listenport", 53, "dns forward port")
 
 func main() {
 	flag.Parse()
-	if err := ensureDir(*rwDirPath); err != nil {
+	if err := os.MkdirAll(*rwDirPath, 0666); err != nil {
 		glog.Errorf("create rwdirpath: %v error: %v", *rwDirPath, err)
 		return
 	}
@@ -50,11 +50,4 @@ func main() {
 
 	http.Handle("/dns", withAuth(dnsHandler()))
 	log.Fatal(http.ListenAndServe(":80", nil))
-}
-
-func ensureDir(path string) error {
-	if _, err := os.Stat(path); os.IsNotExist(err) {
-		return os.Mkdir(path, 0666)
-	}
-	return nil
 }
