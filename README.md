@@ -1,4 +1,8 @@
-# Rind
+# UNMAINTAINED, PLEASE SEE OTHER ALTERNATIVES BELOW
+
+* [coredns](https://github.com/coredns/coredns)
+
+## Rind
 
 [![GoDoc](https://godoc.org/github.com/owlwalks/rind?status.svg)](https://godoc.org/github.com/owlwalks/rind)
 [![Build Status](https://travis-ci.com/owlwalks/rind.svg?branch=master)](https://travis-ci.com/owlwalks/rind)
